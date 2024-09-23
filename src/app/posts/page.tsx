@@ -1,38 +1,63 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { addPost, deletePost } from "@/redux/slices/postsSlice";
-import { useState } from "react";
-import React from "react";
+import {
+  fetchPosts,
+  addNewPost,
+  deletePostAsync,
+  setCurrentPage,
+} from "../../redux/slices/postsSlice";
+import { AppDispatch, RootState } from "../../redux/store";
 
-const Posts = () => {
+export default function Posts() {
   const [title, setTitle] = useState("");
-  const dispatch = useDispatch();
-  const posts = useSelector((state: any) => state.posts);
+  const dispatch = useDispatch<AppDispatch>();
+  const {
+    items: posts,
+    currentPage,
+    totalItems,
+    itemsPerPage,
+    status,
+    error,
+  } = useSelector((state: RootState) => state.posts);
 
-  const handleAddPost = (e: any) => {
+  useEffect(() => {
+    dispatch(fetchPosts(currentPage));
+  }, [dispatch, currentPage]);
+
+  const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) {
-      return;
-    }
+    if (!title.trim()) return;
 
-    const newPost = {
-      id: Date.now(),
-      title: title,
-    };
+    // Calculate the new ID by finding the max existing ID and incrementing it
+    const maxId =
+      posts.length > 0 ? Math.max(...posts.map((post) => post.id)) : 0;
+    const newPost = { id: maxId + 1, title, completed: false };
 
-    dispatch(addPost(newPost));
-
+    dispatch(addNewPost(newPost));
     setTitle("");
   };
 
-  const handleRemovePost = (postId: any) => {
-    dispatch(deletePost(postId));
+  const handleRemovePost = async (postId: number) => {
+    dispatch(deletePostAsync(postId)); // This will now only affect local state
   };
+
+  const handlePageChange = (newPage: number) => {
+    dispatch(setCurrentPage(newPage));
+  };
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  if (status === "loading") return <div>Loading...</div>;
+  if (status === "failed") return <div>Error: {error}</div>;
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-4">
-      <form className="flex gap-2 justify-between mb-4 md:mb-6 lg:mb-8">
+      <form
+        onSubmit={handleAddPost}
+        className="flex gap-2 justify-between mb-4 md:mb-6 lg:mb-8"
+      >
         <input
           type="text"
           className="flex-1 border border-gray-300 rounded p-2 mr-2 md:p-4"
@@ -42,21 +67,24 @@ const Posts = () => {
           required
         />
         <button
-          onClick={handleAddPost}
+          type="submit"
           className="border border-gray-300 rounded p-2 hover:bg-gray-300 md:p-4"
         >
-          Add New Todo{" "}
+          Add New Todo
         </button>
       </form>
       <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl mb-4 md:mb-6 lg:mb-8 text-center">
         My Todo List
       </h1>
-      {posts ? (
-        posts.map((post: any) => (
+      {posts.length > 0 ? (
+        posts.map((post) => (
           <div
             key={post.id}
             className="flex justify-between items-center gap-2 mb-4 md:mb-6 lg:mb-8"
           >
+            <p className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium max-w-full mx-2">
+              {post.id}
+            </p>
             <p className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium max-w-full">
               {post.title}
             </p>
@@ -71,8 +99,25 @@ const Posts = () => {
       ) : (
         <p className="text-center">No posts</p>
       )}
+      <div className="flex justify-center gap-2 mt-4">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span className="px-4 py-2">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
-};
-
-export default Posts;
+}
