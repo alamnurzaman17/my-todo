@@ -12,37 +12,46 @@ import { AppDispatch, RootState } from "../../redux/store";
 
 export default function Posts() {
   const [title, setTitle] = useState("");
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<AppDispatch>(); // Inisialisasi dispatch untuk mengirim action Redux
   const { items, currentPage, itemsPerPage, status, error } = useSelector(
-    (state: RootState) => state.posts
+    (state: RootState) => state.posts // Mengambil state dari Redux store
   );
 
+  // Mengambil posts saat komponen pertama kali di-render
   useEffect(() => {
-    dispatch(fetchPosts());
+    dispatch(fetchPosts()); // Dispatch action untuk fetch posts
   }, [dispatch]);
 
+  // Fungsi untuk menangani submit form penambahan post baru
   const handleAddPost = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    dispatch(addNewPost({ title, completed: false }));
+    dispatch(addNewPost({ title, completed: false })); // Dispatch action untuk menambah post baru
     setTitle("");
   };
 
+  // Fungsi untuk menghapus post berdasarkan id
   const handleRemovePost = (postId: number) => {
-    dispatch(deletePost(postId));
+    dispatch(deletePost(postId)); // Dispatch action untuk menghapus post
   };
 
+  // Fungsi untuk mengubah halaman pada pagination
   const handlePageChange = (newPage: number) => {
-    dispatch(setCurrentPage(newPage));
+    dispatch(setCurrentPage(newPage)); // Dispatch action untuk mengubah halaman
   };
 
+  // Menghitung total halaman berdasarkan jumlah items dan items per page
   const totalPages = Math.ceil(items.length / itemsPerPage);
+  // Mengambil index awal dan akhir posts yang akan ditampilkan di halaman saat ini
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
+  // Menyaring posts yang akan ditampilkan berdasarkan halaman
   const currentPosts = items.slice(startIndex, endIndex);
 
+  // Menampilkan status loading jika data sedang di-fetch
   if (status === "loading") return <div>Loading...</div>;
+  // Menampilkan error jika fetch gagal
   if (status === "failed") return <div>Error: {error}</div>;
 
   return (
@@ -99,16 +108,21 @@ export default function Posts() {
         >
           Previous
         </button>
-        {Array.from({ length: totalPages }, (_, index) => (
-          <button
-            key={index + 1}
-            onClick={() => handlePageChange(index + 1)}
-            disabled={currentPage === index + 1}
-            className="px-4 py-2 border rounded disabled:opacity-50"
-          >
-            {index + 1}
-          </button>
-        ))}
+
+        {/* Tambahkan wrapper untuk membuat tombol bisa digulir jika terlalu banyak */}
+        <div className="overflow-x-auto flex gap-2">
+          {Array.from({ length: totalPages }, (_, index) => (
+            <button
+              key={index + 1}
+              onClick={() => handlePageChange(index + 1)}
+              disabled={currentPage === index + 1}
+              className="px-4 py-2 border rounded disabled:opacity-50"
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}

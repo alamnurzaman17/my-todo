@@ -1,102 +1,13 @@
-// import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-
-// interface Post {
-//   id: number;
-//   title: string;
-//   completed: boolean;
-// }
-
-// interface PostsState {
-//   items: Post[];
-//   currentPage: number;
-//   totalItems: number;
-//   itemsPerPage: number;
-//   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-//   error: string | null;
-// }
-
-// const initialState: PostsState = {
-//   items: [],
-//   currentPage: 1,
-//   totalItems: 0,
-//   itemsPerPage: 10,
-//   status: 'idle',
-//   error: null
-// };
-
-// // Fetch posts dari API
-// export const fetchPosts = createAsyncThunk(
-//   "posts/fetchPosts",
-//   async (page: number) => {
-//     const response = await fetch(`https://jsonplaceholder.typicode.com/todos?_page=${page}&_limit=10`);
-//     if (!response.ok) throw new Error("Failed to fetch posts");
-//     const data = await response.json();
-//     return { data, totalCount: parseInt(response.headers.get('x-total-count') || '0', 10) };
-//   }
-// );
-
-// // Menambahkan post baru
-// export const addNewPost = createAsyncThunk(
-//   "posts/addNewPost",
-//   async (newPost: Omit<Post, "id">) => {
-//     // Disini kita simulasikan penambahan data tanpa mengubah data asli API
-//     return { id: Math.random(), ...newPost }; // Simulasi ID dengan angka acak
-//   }
-// );
-
-// // Menghapus post
-// export const deletePostAsync = createAsyncThunk(
-//   "posts/deletePostAsync",
-//   async (id: number) => {
-//     // Disini kita simulasikan penghapusan data tanpa mengubah data asli API
-//     return id;
-//   }
-// );
-
-// const postsSlice = createSlice({
-//   name: "posts",
-//   initialState,
-//   reducers: {
-//     setCurrentPage: (state, action: PayloadAction<number>) => {
-//       state.currentPage = action.payload;
-//     },
-//   },
-//   extraReducers: (builder) => {
-//     builder
-//       .addCase(fetchPosts.pending, (state) => {
-//         state.status = 'loading';
-//       })
-//       .addCase(fetchPosts.fulfilled, (state, action: PayloadAction<{ data: Post[], totalCount: number }>) => {
-//         state.status = 'succeeded';
-//         state.items = action.payload.data;
-//         state.totalItems = action.payload.totalCount;
-//       })
-//       .addCase(fetchPosts.rejected, (state, action) => {
-//         state.status = 'failed';
-//         state.error = action.error.message || 'Failed to fetch posts';
-//       })
-//       .addCase(addNewPost.fulfilled, (state, action: PayloadAction<Post>) => {
-//         state.items.unshift(action.payload); // Tambahkan item baru di depan daftar
-//         state.totalItems += 1; // Tingkatkan total item
-//       })
-//       .addCase(deletePostAsync.fulfilled, (state, action: PayloadAction<number>) => {
-//         state.items = state.items.filter((post) => post.id !== action.payload);
-//         state.totalItems -= 1; // Kurangi total item
-//       });
-//   },
-// });
-
-// export const { setCurrentPage } = postsSlice.actions;
-// export default postsSlice.reducer;
-
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
+// Definisi interface untuk struktur data Post
 interface Post {
   id: number;
   title: string;
   completed: boolean;
 }
 
+// Definisi interface untuk state posts
 interface PostsState {
   items: Post[];
   currentPage: number;
@@ -106,52 +17,62 @@ interface PostsState {
   nextId: number;
 }
 
+// State awal posts
 const initialState: PostsState = {
   items: [],
-  currentPage: 1,
-  itemsPerPage: 10,
+  currentPage: 1, // Halaman default adalah halaman pertama
+  itemsPerPage: 10, // 10 post per halaman
   status: 'idle',
   error: null,
-  nextId: 0, // This will be set after fetching initial data
+  nextId: 0, // nextId akan diatur setelah data awal difetch
 };
 
+// Thunk untuk fetch data posts dari API secara asynchronous
 export const fetchPosts = createAsyncThunk(
   "posts/fetchPosts",
   async () => {
+    // Fetch data dari endpoint API
     const response = await fetch('https://jsonplaceholder.typicode.com/todos');
     if (!response.ok) throw new Error("Failed to fetch posts");
     return response.json() as Promise<Post[]>;
   }
 );
 
+// Slice untuk mengelola state posts
 const postsSlice = createSlice({
   name: "posts",
   initialState,
   reducers: {
+    // Reducer untuk mengubah halaman saat ini
     setCurrentPage: (state, action: PayloadAction<number>) => {
-      state.currentPage = action.payload;
+      state.currentPage = action.payload; 
     },
+     // Reducer untuk menambah post baru
     addNewPost: (state, action: PayloadAction<Omit<Post, "id">>) => {
       const newPost = { ...action.payload, id: state.nextId };
       state.items.push(newPost);
       state.nextId += 1;
-      // Sort items in descending order by id
+      // Urutkan daftar post berdasarkan ID secara descending (terbaru di atas)
       state.items.sort((a, b) => b.id - a.id);
     },
+    // Reducer untuk menghapus post berdasarkan ID
     deletePost: (state, action: PayloadAction<number>) => {
       state.items = state.items.filter((post) => post.id !== action.payload);
     },
   },
   extraReducers: (builder) => {
     builder
+    // Ketika proses fetch posts sedang berlangsung
       .addCase(fetchPosts.pending, (state) => {
         state.status = 'loading';
       })
+       // Ketika fetch posts berhasil
       .addCase(fetchPosts.fulfilled, (state, action: PayloadAction<Post[]>) => {
         state.status = 'succeeded';
         state.items = action.payload.sort((a, b) => b.id - a.id); // Sort in descending order
-        state.nextId = Math.max(...state.items.map(item => item.id)) + 1; // Set nextId based on highest existing id
+        state.nextId = Math.max(...state.items.map(item => item.id)) + 1;  // Tentukan ID berikutnya berdasarkan ID terbesar di daftar
       })
+      // Ketika fetch posts gagal
       .addCase(fetchPosts.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Failed to fetch posts';
@@ -159,5 +80,7 @@ const postsSlice = createSlice({
   },
 });
 
+// Export reducers yang bisa digunakan oleh komponen
 export const { setCurrentPage, addNewPost, deletePost } = postsSlice.actions;
+// Export reducer untuk digunakan dalam store Redux
 export default postsSlice.reducer;
