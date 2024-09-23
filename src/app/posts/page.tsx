@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from "react-redux";
 import {
   fetchPosts,
   addNewPost,
-  deletePostAsync,
+  deletePost,
   setCurrentPage,
 } from "../../redux/slices/postsSlice";
 import { AppDispatch, RootState } from "../../redux/store";
@@ -13,41 +13,34 @@ import { AppDispatch, RootState } from "../../redux/store";
 export default function Posts() {
   const [title, setTitle] = useState("");
   const dispatch = useDispatch<AppDispatch>();
-  const {
-    items: posts,
-    currentPage,
-    totalItems,
-    itemsPerPage,
-    status,
-    error,
-  } = useSelector((state: RootState) => state.posts);
+  const { items, currentPage, itemsPerPage, status, error } = useSelector(
+    (state: RootState) => state.posts
+  );
 
   useEffect(() => {
-    dispatch(fetchPosts(currentPage));
-  }, [dispatch, currentPage]);
+    dispatch(fetchPosts());
+  }, [dispatch]);
 
-  const handleAddPost = async (e: React.FormEvent) => {
+  const handleAddPost = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    // Calculate the new ID by finding the max existing ID and incrementing it
-    const maxId =
-      posts.length > 0 ? Math.max(...posts.map((post) => post.id)) : 0;
-    const newPost = { id: maxId + 1, title, completed: false };
-
-    dispatch(addNewPost(newPost));
+    dispatch(addNewPost({ title, completed: false }));
     setTitle("");
   };
 
-  const handleRemovePost = async (postId: number) => {
-    dispatch(deletePostAsync(postId)); // This will now only affect local state
+  const handleRemovePost = (postId: number) => {
+    dispatch(deletePost(postId));
   };
 
   const handlePageChange = (newPage: number) => {
     dispatch(setCurrentPage(newPage));
   };
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPosts = items.slice(startIndex, endIndex);
 
   if (status === "loading") return <div>Loading...</div>;
   if (status === "failed") return <div>Error: {error}</div>;
@@ -76,29 +69,28 @@ export default function Posts() {
       <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl mb-4 md:mb-6 lg:mb-8 text-center">
         My Todo List
       </h1>
-      {posts.length > 0 ? (
-        posts.map((post) => (
-          <div
-            key={post.id}
-            className="flex justify-between items-center gap-2 mb-4 md:mb-6 lg:mb-8"
-          >
-            <p className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium max-w-full mx-2">
-              {post.id}
-            </p>
-            <p className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium max-w-full">
-              {post.title}
-            </p>
-            <button
-              onClick={() => handleRemovePost(post.id)}
-              className="text-red-500 border border-red-500 rounded px-2 hover:bg-red-500 hover:text-white md:px-4 lg:px-6"
+      <ul>
+        {currentPosts.length > 0 ? (
+          currentPosts.map((post) => (
+            <li
+              key={post.id}
+              className="flex justify-between items-center gap-2 mb-4 md:mb-6 lg:mb-8"
             >
-              Delete
-            </button>
-          </div>
-        ))
-      ) : (
-        <p className="text-center">No posts</p>
-      )}
+              <p className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium max-w-full">
+                {post.id}. {post.title}
+              </p>
+              <button
+                onClick={() => handleRemovePost(post.id)}
+                className="text-red-500 border border-red-500 rounded px-2 hover:bg-red-500 hover:text-white md:px-4 lg:px-6"
+              >
+                Delete
+              </button>
+            </li>
+          ))
+        ) : (
+          <p className="text-center">No posts</p>
+        )}
+      </ul>
       <div className="flex justify-center gap-2 mt-4">
         <button
           onClick={() => handlePageChange(currentPage - 1)}
@@ -107,9 +99,16 @@ export default function Posts() {
         >
           Previous
         </button>
-        <span className="px-4 py-2">
-          Page {currentPage} of {totalPages}
-        </span>
+        {Array.from({ length: totalPages }, (_, index) => (
+          <button
+            key={index + 1}
+            onClick={() => handlePageChange(index + 1)}
+            disabled={currentPage === index + 1}
+            className="px-4 py-2 border rounded disabled:opacity-50"
+          >
+            {index + 1}
+          </button>
+        ))}
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
